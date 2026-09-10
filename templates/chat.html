@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>NAD AI</title>
+    <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-top">
+
+            <h2 class="sidebar-logo">
+                ✦ NAD AI
+            </h2>
+
+            <button
+                class="new-chat-btn"
+                onclick="createNewChat()"
+            >
+                ＋ New Chat
+            </button>
+
+        </div>
+
+
+        <div
+            class="history-section"
+            id="history-section"
+        >
+
+            <p class="history-title">
+                Recent Chats
+            </p>
+
+            <div id="chat-history">
+
+                {% for conversation in conversations %}
+
+                    <button
+                        class="history-chat"
+                        onclick="loadChat('{{ conversation._id }}')"
+                    >
+
+                        💬
+
+                        <span>
+                            {{ conversation.title }}
+                        </span>
+
+                    </button>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <div class="sidebar-bottom">
+
+            <div class="user-info">
+
+                <div class="user-avatar">
+                    {{ email[0].upper() }}
+                </div>
+
+                <div class="user-email">
+                    {{ email }}
+                </div>
+
+            </div>
+
+            <a
+                href="/logout"
+                class="logout-btn"
+            >
+                Logout
+            </a>
+
+        </div>
+
+    </aside>
+
+
+    <main class="main-chat">
+
+        <header class="chat-header">
+
+            <div>
+
+                <h1>
+                    NAD AI
+                </h1>
+
+                <p>
+                    Your intelligent AI assistant
+                </p>
+
+            </div>
+
+        </header>
+
+
+        <div
+            class="chat-box"
+            id="chat-box"
+        >
+
+            <div class="welcome-screen">
+
+                <div class="welcome-icon">
+                    ✦
+                </div>
+
+                <h2>
+                    How can I help you today?
+                </h2>
+
+                <p>
+                    Ask anything. NAD AI is ready to help.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="input-area">
+
+            <form
+                class="input-form"
+                onsubmit="sendMessage(event)"
+            >
+
+                <button
+                    type="button"
+                    class="attachment-btn"
+                    title="Attachments"
+                    onclick="showAttachmentMessage()"
+                >
+                    ＋
+                </button>
+
+                <textarea
+                    id="user-input"
+                    placeholder="Message NAD AI..."
+                    rows="1"
+                    required
+                ></textarea>
+                <button
+                    type="button"
+                    class="voice-btn"
+                    id="voice-button"
+                    title="Voice Input"
+                >
+                <svg
+                    class="voice-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"
+                    />
+                    <path
+                        d="M5 11a7 7 0 0 0 14 0"
+                    />
+                    <path
+                        d="M12 18v3"
+                    />
+                    <path
+                        d="M8 21h8"
+                    />
+                    </svg>
+                </button>
+                <button
+                    type="submit"
+                    class="send-btn"
+                >
+    ↑
+                </button>
+            </form>
+
+
+            <p class="input-note">
+                NAD AI can make mistakes. Check important information.
+            </p>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<script>
+
+    let currentConversationId = null;
+
+</script>
+
+
+<script
+    src="{{ url_for('static', filename='script.js') }}"
+></script>
+
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+Flask
+Flask-Bcrypt
+pymongo
+certifi
+google-genai
+gunicorn
