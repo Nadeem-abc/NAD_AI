@@ -63,6 +63,7 @@ messages_collection = db["messages"]
 # ==========================================
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
 gemini_client = genai.Client(
 api_key=GEMINI_API_KEY
