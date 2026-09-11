@@ -4,3 +4,4 @@ pymongo
 certifi
 google-genai
 gunicorn
+tavily-python
