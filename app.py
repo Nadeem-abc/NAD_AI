@@ -597,35 +597,27 @@ def ask_gemini():
     # ======================================
 
     try:
-
         search_response = tavily_client.search(
             query=user_message,
             search_depth="basic",
-            max_results=5
+            max_results=2
         )
-
         search_context = ""
-
         for result in search_response.get("results", []):
-
             search_context += (
                 "Title: "
                 + result.get("title", "")
                 + "\n"
                 + "Content: "
-                + result.get("content", "")
+                + result.get("content", "")[:1500]
                 + "\n\n"
             )
-
     except Exception as e:
-
         print(
             "TAVILY ERROR:",
             e
         )
-
         search_context = ""
-
 
     # ======================================
     # GET RESPONSE FROM GEMINI
