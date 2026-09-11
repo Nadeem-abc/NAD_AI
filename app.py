@@ -592,6 +592,44 @@ def ask_gemini():
     # ======================================
     # GET RESPONSE FROM GEMINI
     # ======================================
+    # ======================================
+    # SEARCH WEB USING TAVILY
+    # ======================================
+
+    try:
+
+        search_response = tavily_client.search(
+            query=user_message,
+            search_depth="basic",
+            max_results=5
+        )
+
+        search_context = ""
+
+        for result in search_response.get("results", []):
+
+            search_context += (
+                "Title: "
+                + result.get("title", "")
+                + "\n"
+                + "Content: "
+                + result.get("content", "")
+                + "\n\n"
+            )
+
+    except Exception as e:
+
+        print(
+            "TAVILY ERROR:",
+            e
+        )
+
+        search_context = ""
+
+
+    # ======================================
+    # GET RESPONSE FROM GEMINI
+    # ======================================
 
     try:
 
@@ -601,8 +639,18 @@ def ask_gemini():
                 "You are NAD AI, a helpful and friendly AI assistant. "
                 "Continue the conversation naturally. "
                 "Answer clearly and accurately. "
-                "If the user asks in Tamil or Tanglish, you may respond "
+                "If the user asks in Tamil or Tanglish, respond "
                 "in simple Tamil or Tanglish.\n\n"
+
+                "Use the web search information below when it is "
+                "relevant, especially for current or recent information. "
+                "Do not blindly trust search results. "
+                "If the search information is insufficient, say so.\n\n"
+
+                "WEB SEARCH RESULTS:\n"
+                + search_context
+                + "\n\n"
+                "CONVERSATION:\n"
                 + conversation_text
             )
         )
