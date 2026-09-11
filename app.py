@@ -602,10 +602,7 @@ def ask_gemini():
                 "If the user asks in Tamil or Tanglish, you may respond "
                 "in simple Tamil or Tanglish.\n\n"
                 + conversation_text
-            ),
-            config={
-                "tools": [{"google_search": {}}]
-            }
+            )
         )
 
         bot_reply = response.text
