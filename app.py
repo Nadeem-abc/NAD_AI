@@ -6,6 +6,7 @@ from google import genai
 import certifi
 from datetime import datetime
 import os
+from tavily import TavilyClient
 
 # ==========================================
 
