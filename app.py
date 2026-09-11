@@ -3,15 +3,14 @@ from flask_bcrypt import Bcrypt
 from pymongo import MongoClient
 from bson import ObjectId
 from google import genai
+from tavily import TavilyClient
 import certifi
 from datetime import datetime
 import os
-from tavily import TavilyClient
+
 
 # ==========================================
-
 # NAD AI - FLASK APPLICATION
-
 # ==========================================
 
 app = Flask(__name__)
@@ -20,32 +19,34 @@ app.secret_key = os.getenv("SECRET_KEY")
 
 bcrypt = Bcrypt(app)
 
-# ==========================================
 
+# ==========================================
 # MONGODB CONNECTION
-
 # ==========================================
+
 MONGO_URI = os.getenv("MONGO_URI")
 
 client = MongoClient(
-MONGO_URI,
-tls=True,
-tlsCAFile=certifi.where(),
-serverSelectionTimeoutMS=10000
+    MONGO_URI,
+    tls=True,
+    tlsCAFile=certifi.where(),
+    serverSelectionTimeoutMS=10000
 )
 
 try:
+
     client.admin.command("ping")
+
     print("MongoDB Connected Successfully!")
 
 except Exception as e:
+
     print("MongoDB Connection Error:")
     print(e)
 
+
 # ==========================================
-
 # DATABASE AND COLLECTIONS
-
 # ==========================================
 
 db = client["nad_ai_database"]
@@ -56,24 +57,81 @@ conversations_collection = db["conversations"]
 
 messages_collection = db["messages"]
 
+
 # ==========================================
-
 # GEMINI AI CONNECTION
-
 # ==========================================
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
 gemini_client = genai.Client(
-api_key=GEMINI_API_KEY
+    api_key=GEMINI_API_KEY
 )
 
+
+# ==========================================
+# TAVILY WEB SEARCH CONNECTION
 # ==========================================
 
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+
+tavily_client = TavilyClient(
+    api_key=TAVILY_API_KEY
+)
+
+
+# ==========================================
+# CHECK WHETHER WEB SEARCH IS NEEDED
+# ==========================================
+
+def needs_web_search(message):
+
+    message_lower = message.lower()
+
+    web_keywords = [
+        "current",
+        "now",
+        "today",
+        "latest",
+        "recent",
+        "news",
+        "update",
+        "this week",
+        "this month",
+        "who is the cm",
+        "who is cm",
+        "chief minister",
+        "prime minister",
+        "president",
+        "minister",
+        "election",
+        "result",
+        "weather",
+        "price",
+        "stock",
+        "share price",
+        "exchange rate",
+        "distance",
+        "train",
+        "bus",
+        "flight",
+        "opening time",
+        "closing time"
+    ]
+
+    for keyword in web_keywords:
+
+        if keyword in message_lower:
+
+            return True
+
+    return False
+
+
+# ==========================================
 # HOME PAGE
-
 # ==========================================
+
 @app.route("/")
 def home():
 
@@ -86,16 +144,15 @@ def home():
     return redirect(
         url_for("login")
     )
- 
+
 
 # ==========================================
-
 # SIGNUP
-
 # ==========================================
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
+
     if request.method == "POST":
 
         email = request.form.get(
@@ -107,51 +164,60 @@ def signup():
             "password",
             ""
         )
+
         if not email or not password:
 
             return render_template(
                 "signup.html",
                 error="Please fill all fields!"
-                )
+            )
+
         existing_user = users_collection.find_one(
             {
                 "email": email
-                }
-                )
+            }
+        )
+
         if existing_user:
+
             return render_template(
                 "signup.html",
                 error="Email already exists! Please login."
-                )
+            )
+
         hashed_password = bcrypt.generate_password_hash(
             password
-            ).decode("utf-8")
+        ).decode("utf-8")
+
         result = users_collection.insert_one(
             {
                 "email": email,
                 "password": hashed_password,
                 "created_at": datetime.now()
-                }
-                )
+            }
+        )
+
         session["user_id"] = str(
             result.inserted_id
-            )
+        )
+
         session["email"] = email
+
         print(
             "New user saved successfully!"
-            )
+        )
+
         return redirect(
             url_for("chat_page")
-            )
+        )
+
     return render_template(
         "signup.html"
-        )
- 
+    )
+
 
 # ==========================================
-
 # LOGIN
-
 # ==========================================
 
 @app.route("/login", methods=["GET", "POST"])
@@ -169,13 +235,11 @@ def login():
             ""
         )
 
-
         user = users_collection.find_one(
             {
                 "email": email
             }
         )
-
 
         if user and bcrypt.check_password_hash(
             user["password"],
@@ -196,17 +260,15 @@ def login():
                 url_for("chat_page")
             )
 
-
         return render_template(
             "login.html",
             error="Invalid email or password!"
         )
 
-
     return render_template(
         "login.html"
     )
- 
+
 
 # ==========================================
 # CHAT PAGE
@@ -243,7 +305,6 @@ def chat_page():
 
         conversations = []
 
-
     return render_template(
         "chat.html",
         email=session.get(
@@ -268,7 +329,6 @@ def create_new_chat():
             }
         ), 401
 
-
     try:
 
         conversation = {
@@ -279,16 +339,13 @@ def create_new_chat():
             "updated_at": datetime.now()
         }
 
-
         result = conversations_collection.insert_one(
             conversation
         )
 
-
         conversation_id = str(
             result.inserted_id
         )
-
 
         return jsonify(
             {
@@ -297,14 +354,12 @@ def create_new_chat():
             }
         )
 
-
     except Exception as e:
 
         print(
             "NEW CHAT ERROR:",
             e
         )
-
 
         return jsonify(
             {
@@ -328,7 +383,6 @@ def get_chat_history(conversation_id):
             }
         ), 401
 
-
     try:
 
         conversation = conversations_collection.find_one(
@@ -340,7 +394,6 @@ def get_chat_history(conversation_id):
             }
         )
 
-
         if not conversation:
 
             return jsonify(
@@ -348,7 +401,6 @@ def get_chat_history(conversation_id):
                     "error": "Chat not found"
                 }
             ), 404
-
 
         messages = list(
             messages_collection.find(
@@ -362,9 +414,7 @@ def get_chat_history(conversation_id):
             )
         )
 
-
         message_list = []
-
 
         for message in messages:
 
@@ -374,7 +424,6 @@ def get_chat_history(conversation_id):
                     "content": message["content"]
                 }
             )
-
 
         return jsonify(
             {
@@ -387,14 +436,12 @@ def get_chat_history(conversation_id):
             }
         )
 
-
     except Exception as e:
 
         print(
             "CHAT HISTORY ERROR:",
             e
         )
-
 
         return jsonify(
             {
@@ -403,12 +450,8 @@ def get_chat_history(conversation_id):
         ), 500
 
 
-
 # ==========================================
-# GET CHAT HISTORY
-# ==========================================
-
-
+# ASK GEMINI
 # ==========================================
 
 @app.route("/api/chat", methods=["POST"])
@@ -549,17 +592,22 @@ def ask_gemini():
             )
         )
 
-        previous_messages = previous_messages[-20:]
+        previous_messages = previous_messages[-10:]
 
         conversation_text = ""
 
         for message in previous_messages:
 
+            content = message.get(
+                "content",
+                ""
+            )[:1000]
+
             if message["role"] == "user":
 
                 conversation_text += (
                     "User: "
-                    + message["content"]
+                    + content
                     + "\n"
                 )
 
@@ -567,13 +615,13 @@ def ask_gemini():
 
                 conversation_text += (
                     "NAD AI: "
-                    + message["content"]
+                    + content
                     + "\n"
                 )
 
         conversation_text += (
             "User: "
-            + user_message
+            + user_message[:2000]
         )
 
     except Exception as e:
@@ -585,39 +633,59 @@ def ask_gemini():
 
         conversation_text = (
             "User: "
-            + user_message
+            + user_message[:2000]
         )
 
 
     # ======================================
-    # GET RESPONSE FROM GEMINI
-    # ======================================
-    # ======================================
-    # SEARCH WEB USING TAVILY
+    # TAVILY WEB SEARCH
     # ======================================
 
-    try:
-        search_response = tavily_client.search(
-            query=user_message,
-            search_depth="basic",
-            max_results=2
-        )
-        search_context = ""
-        for result in search_response.get("results", []):
-            search_context += (
-                "Title: "
-                + result.get("title", "")
-                + "\n"
-                + "Content: "
-                + result.get("content", "")[:1500]
-                + "\n\n"
+    search_context = ""
+
+    if needs_web_search(user_message):
+
+        try:
+
+            search_response = tavily_client.search(
+                query=user_message,
+                search_depth="basic",
+                max_results=2
             )
-    except Exception as e:
-        print(
-            "TAVILY ERROR:",
-            e
-        )
-        search_context = ""
+
+            for result in search_response.get(
+                "results",
+                []
+            ):
+
+                title = result.get(
+                    "title",
+                    ""
+                )
+
+                content = result.get(
+                    "content",
+                    ""
+                )[:1500]
+
+                search_context += (
+                    "Title: "
+                    + title
+                    + "\n"
+                    + "Content: "
+                    + content
+                    + "\n\n"
+                )
+
+        except Exception as e:
+
+            print(
+                "TAVILY ERROR:",
+                e
+            )
+
+            search_context = ""
+
 
     # ======================================
     # GET RESPONSE FROM GEMINI
@@ -625,26 +693,50 @@ def ask_gemini():
 
     try:
 
-        response = gemini_client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=(
-                "You are NAD AI, a helpful and friendly AI assistant. "
-                "Continue the conversation naturally. "
-                "Answer clearly and accurately. "
-                "If the user asks in Tamil or Tanglish, respond "
-                "in simple Tamil or Tanglish.\n\n"
+        if search_context:
 
-                "Use the web search information below when it is "
-                "relevant, especially for current or recent information. "
-                "Do not blindly trust search results. "
-                "If the search information is insufficient, say so.\n\n"
+            prompt = (
+                "You are NAD AI, a helpful and friendly AI assistant.\n\n"
+
+                "IMPORTANT WEB SEARCH RULE:\n"
+                "The user asked a question that may require current or "
+                "recent information. Web search results are provided below.\n"
+                "Use the web search results as the primary source for "
+                "current facts.\n"
+                "Do not answer a current-fact question using old memory "
+                "when the web results provide a newer answer.\n"
+                "If the web results are unclear or conflicting, say that "
+                "the information could not be verified clearly.\n\n"
+
+                "If the user asks in Tamil or Tanglish, respond in "
+                "simple Tamil or Tanglish.\n\n"
 
                 "WEB SEARCH RESULTS:\n"
                 + search_context
-                + "\n\n"
+                + "\n"
+
                 "CONVERSATION:\n"
                 + conversation_text
             )
+
+        else:
+
+            prompt = (
+                "You are NAD AI, a helpful and friendly AI assistant.\n\n"
+
+                "Continue the conversation naturally.\n"
+                "Answer clearly and accurately.\n"
+                "If the user asks in Tamil or Tanglish, respond in "
+                "simple Tamil or Tanglish.\n\n"
+
+                "CONVERSATION:\n"
+                + conversation_text
+            )
+
+
+        response = gemini_client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt
         )
 
         bot_reply = response.text
@@ -672,10 +764,13 @@ def ask_gemini():
             }
         ), 500
 
+
     # ======================================
     # SAVE MESSAGES TO DATABASE
     # ======================================
+
     try:
+
         messages_collection.insert_one(
             {
                 "conversation_id": conversation_id,
@@ -698,16 +793,19 @@ def ask_gemini():
 
         conversation_data = conversations_collection.find_one(
             {
-                "_id": ObjectId(conversation_id),
+                "_id": ObjectId(
+                    conversation_id
+                ),
                 "user_id": session["user_id"]
             }
         )
 
         if conversation_data["title"] == "New Chat":
-  
+
             conversations_collection.update_one(
                 {
-                    "_id": ObjectId(conversation_id)
+                    "_id": ObjectId(conversation_id),
+                    "user_id": session["user_id"]
                 },
                 {
                     "$set": {
@@ -715,13 +813,14 @@ def ask_gemini():
                         "updated_at": datetime.now()
                     }
                 }
-            ) 
+            )
 
         else:
- 
+
             conversations_collection.update_one(
                 {
-                    "_id": ObjectId(conversation_id)
+                    "_id": ObjectId(conversation_id),
+                    "user_id": session["user_id"]
                 },
                 {
                     "$set": {
@@ -742,16 +841,17 @@ def ask_gemini():
         )
 
 
-# ======================================
-# SEND RESPONSE TO WEBSITE
-# ======================================
+    # ======================================
+    # SEND RESPONSE TO WEBSITE
+    # ======================================
 
     return jsonify(
         {
             "reply": bot_reply,
-           "conversation_id": conversation_id
+            "conversation_id": conversation_id
         }
     )
+
 
 # ==========================================
 # LOGOUT
@@ -770,9 +870,3 @@ def logout():
 # ==========================================
 # RUN APPLICATION
 # ==========================================
-
-if __name__ == "__main__":
-
-    app.run(
-        debug=True
-    )
