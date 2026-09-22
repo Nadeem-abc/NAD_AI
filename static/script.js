@@ -1,4 +1,10 @@
 
+let currentConversationId = null;
+
+
+/* =========================================
+CREATE NEW CHAT
+========================================= */
 
 async function createNewChat() {
 
@@ -18,20 +24,16 @@ async function createNewChat() {
 
         if (data.error) {
 
-            alert(
-                data.error
-            );
-
+            alert(data.error);
             return;
+
         }
 
         currentConversationId =
             data.conversation_id;
 
         const chatBox =
-            document.getElementById(
-                "chat-box"
-            );
+            document.getElementById("chat-box");
 
         chatBox.innerHTML = `
 
@@ -52,42 +54,6 @@ async function createNewChat() {
             </div>
 
         `;
-
-        const historyContainer =
-            document.getElementById(
-                "chat-history"
-            );
-
-        const newChatButton =
-            document.createElement(
-                "button"
-            );
-
-        newChatButton.className =
-            "history-chat";
-
-        newChatButton.onclick =
-            function () {
-
-                loadChat(
-                    currentConversationId
-                );
-
-            };
-
-        newChatButton.innerHTML = `
-
-            💬
-
-            <span>
-                ${data.title}
-            </span>
-
-        `;
-
-        historyContainer.prepend(
-            newChatButton
-        );
 
         document.getElementById(
             "user-input"
@@ -125,11 +91,9 @@ async function loadChat(
 
         if (data.error) {
 
-            alert(
-                data.error
-            );
-
+            alert(data.error);
             return;
+
         }
 
         currentConversationId =
@@ -140,8 +104,7 @@ async function loadChat(
                 "chat-box"
             );
 
-        chatBox.innerHTML =
-            "";
+        chatBox.innerHTML = "";
 
         data.messages.forEach(
             function (message) {
@@ -172,7 +135,7 @@ async function loadChat(
 
 
 /* =========================================
-ADD MESSAGE TO SCREEN
+ADD MESSAGE
 ========================================= */
 
 function addMessage(
@@ -261,8 +224,39 @@ async function sendMessage(
         "user"
     );
 
-    input.value =
-        "";
+    input.value = "";
+
+    /* Thinking message */
+
+    const thinkingId =
+        "thinking-" + Date.now();
+
+    const chatBox =
+        document.getElementById(
+            "chat-box"
+        );
+
+    const thinkingDiv =
+        document.createElement(
+            "div"
+        );
+
+    thinkingDiv.id =
+        thinkingId;
+
+    thinkingDiv.className =
+        "message bot-message";
+
+    thinkingDiv.textContent =
+        "NAD AI is thinking...";
+
+    chatBox.appendChild(
+        thinkingDiv
+    );
+
+    chatBox.scrollTop =
+        chatBox.scrollHeight;
+
 
     try {
 
@@ -288,8 +282,40 @@ async function sendMessage(
                 }
             );
 
+
         const data =
             await response.json();
+
+
+        /* Remove thinking message */
+
+        const thinkingMessage =
+            document.getElementById(
+                thinkingId
+            );
+
+        if (thinkingMessage) {
+
+            thinkingMessage.remove();
+
+        }
+
+
+        /* Error */
+
+        if (!response.ok) {
+
+            addMessage(
+                data.error ||
+                data.reply ||
+                "NAD AI is not responding right now.",
+                "bot"
+            );
+
+            return;
+
+        }
+
 
         if (data.error) {
 
@@ -302,50 +328,79 @@ async function sendMessage(
 
         }
 
-        if (
-            data.conversation_id
-        ) {
+
+        /* Save conversation ID */
+
+        if (data.conversation_id) {
 
             currentConversationId =
                 data.conversation_id;
 
         }
 
-        addMessage(
-            data.reply,
-            "bot"
-        );
+
+        /* Image response */
 
         if (data.image) {
+
+            addMessage(
+                data.reply ||
+                "Here is your generated image! 🖼️",
+                "bot"
+            );
 
             const imageDiv =
                 document.createElement(
                     "div"
                 );
 
-            imageDiv.classList.add(
-                "bot-message"
+            imageDiv.className =
+                "message bot-message";
+
+            const image =
+                document.createElement(
+                    "img"
+                );
+
+            image.src =
+                data.image;
+
+            image.alt =
+                "Generated image";
+
+            image.style.maxWidth =
+                "100%";
+
+            image.style.borderRadius =
+                "12px";
+
+            image.style.marginTop =
+                "8px";
+
+            imageDiv.appendChild(
+                image
             );
 
-            imageDiv.innerHTML = `
-                <img
-                    src="${data.image}"
-                    style="max-width:100%; border-radius:12px; margin-top:10px;"
-                >
-            `;
+            chatBox.appendChild(
+                imageDiv
+            );
 
-            document
-                .getElementById("chat-box")
-                .appendChild(imageDiv);
+            chatBox.scrollTop =
+                chatBox.scrollHeight;
 
-            document
-                .getElementById("chat-box")
-                .scrollTop =
-                document
-                    .getElementById("chat-box")
-                    .scrollHeight;
+            return;
 
         }
+
+
+        /* Normal AI response */
+
+        addMessage(
+            data.reply ||
+            "Sorry, NAD AI could not generate a response.",
+            "bot"
+        );
+
 
     } catch (error) {
 
@@ -354,8 +409,19 @@ async function sendMessage(
             error
         );
 
+        const thinkingMessage =
+            document.getElementById(
+                thinkingId
+            );
+
+        if (thinkingMessage) {
+
+            thinkingMessage.remove();
+
+        }
+
         addMessage(
-            "Sorry, something went wrong. Please try again.",
+            "Sorry, NAD AI is not responding right now. Please try again.",
             "bot"
         );
 
@@ -363,8 +429,9 @@ async function sendMessage(
 
 }
 
+
 /* =========================================
-ATTACHMENT MESSAGE
+ATTACHMENT
 ========================================= */
 
 function showAttachmentMessage() {
@@ -402,8 +469,112 @@ document.addEventListener(
                         Math.min(
                             this.scrollHeight,
                             150
-                        )
-                        + "px";
+                        ) + "px";
+
+                }
+            );
+
+        }
+
+
+        /* =================================
+        VOICE INPUT
+        ================================= */
+
+        const voiceButton =
+            document.getElementById(
+                "voice-button"
+            );
+
+        const userInput =
+            document.getElementById(
+                "user-input"
+            );
+
+
+        if (
+            voiceButton &&
+            userInput &&
+            "webkitSpeechRecognition" in window
+        ) {
+
+            const recognition =
+                new webkitSpeechRecognition();
+
+            recognition.continuous =
+                false;
+
+            recognition.interimResults =
+                false;
+
+            recognition.lang =
+                "en-US";
+
+
+            voiceButton.addEventListener(
+                "click",
+                function () {
+
+                    try {
+
+                        recognition.start();
+
+                        voiceButton.innerHTML =
+                            "🔴";
+
+                    } catch (error) {
+
+                        console.log(
+                            "Voice already started"
+                        );
+
+                    }
+
+                }
+            );
+
+
+            recognition.onresult =
+                function (event) {
+
+                    const voiceText =
+                        event.results[0][0]
+                            .transcript;
+
+                    userInput.value =
+                        voiceText;
+
+                };
+
+
+            recognition.onerror =
+                function () {
+
+                    voiceButton.innerHTML =
+                        "🎤";
+
+                };
+
+
+            recognition.onend =
+                function () {
+
+                    voiceButton.innerHTML =
+                        "🎤";
+
+                };
+
+        }
+
+        else if (voiceButton) {
+
+            voiceButton.addEventListener(
+                "click",
+                function () {
+
+                    alert(
+                        "Voice recognition is not supported in this browser."
+                    );
 
                 }
             );
@@ -412,92 +583,3 @@ document.addEventListener(
 
     }
 );
-const voiceButton = document.getElementById("voice-button");
-const userInput = document.getElementById("user-input");
-
-function setMicIcon() {
-
-voiceButton.innerHTML = `
-    <svg
-        class="voice-icon"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-    >
-        <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"/>
-        <path d="M5 11a7 7 0 0 0 14 0"/>
-        <path d="M12 18v3"/>
-        <path d="M8 21h8"/>
-    </svg>
-`;
-
-}
-
-setMicIcon();
-
-if ("webkitSpeechRecognition" in window) {
-
-const recognition = new webkitSpeechRecognition();
-
-recognition.continuous = false;
-
-recognition.interimResults = false;
-
-recognition.lang = "en-US";
-
-
-voiceButton.addEventListener(
-    "click",
-    function () {
-
-        recognition.start();
-
-        voiceButton.innerHTML = "🔴";
-
-    }
-);
-
-
-recognition.onresult = function (event) {
-
-    const voiceText =
-        event.results[0][0].transcript;
-
-    userInput.value =
-        voiceText;
-
-    setMicIcon();
-
-    
-
-};
-
-
-recognition.onerror = function () {
-
-    setMicIcon();
-
-};
-
-
-recognition.onend = function () {
-
-    setMicIcon();
-
-};
-
-}
-
-else {
-
-voiceButton.addEventListener(
-    "click",
-    function () {
-
-        alert(
-            "Voice recognition is not supported in this browser."
-        );
-
-    }
-);
-
-}
