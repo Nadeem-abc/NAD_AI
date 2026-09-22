@@ -316,6 +316,37 @@ async function sendMessage(
             "bot"
         );
 
+        if (data.image) {
+
+            const imageDiv =
+                document.createElement(
+                    "div"
+                );
+
+            imageDiv.classList.add(
+                "bot-message"
+            );
+
+            imageDiv.innerHTML = `
+                <img
+                    src="${data.image}"
+                    style="max-width:100%; border-radius:12px; margin-top:10px;"
+                >
+            `;
+
+            document
+                .getElementById("chat-box")
+                .appendChild(imageDiv);
+
+            document
+                .getElementById("chat-box")
+                .scrollTop =
+                document
+                    .getElementById("chat-box")
+                    .scrollHeight;
+
+        }
+
     } catch (error) {
 
         console.error(
@@ -331,7 +362,6 @@ async function sendMessage(
     }
 
 }
-
 
 /* =========================================
 ATTACHMENT MESSAGE
