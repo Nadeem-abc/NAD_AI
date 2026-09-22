@@ -12,10 +12,11 @@
     >
 
     <title>NAD AI</title>
+
     <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
->
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
 
     <link
         rel="stylesheet"
@@ -24,9 +25,15 @@
 
 </head>
 
+
 <body>
 
 <div class="app-container">
+
+
+    <!-- =========================================
+    SIDEBAR
+    ========================================= -->
 
     <aside class="sidebar">
 
@@ -36,7 +43,9 @@
                 ✦ NAD AI
             </h2>
 
+
             <button
+                type="button"
                 class="new-chat-btn"
                 onclick="createNewChat()"
             >
@@ -45,6 +54,10 @@
 
         </div>
 
+
+        <!-- =========================================
+        CHAT HISTORY
+        ========================================= -->
 
         <div
             class="history-section"
@@ -55,11 +68,13 @@
                 Recent Chats
             </p>
 
+
             <div id="chat-history">
 
                 {% for conversation in conversations %}
 
                     <button
+                        type="button"
                         class="history-chat"
                         onclick="loadChat('{{ conversation._id }}')"
                     >
@@ -79,6 +94,10 @@
         </div>
 
 
+        <!-- =========================================
+        SIDEBAR BOTTOM
+        ========================================= -->
+
         <div class="sidebar-bottom">
 
             <div class="user-info">
@@ -87,11 +106,13 @@
                     {{ email[0].upper() }}
                 </div>
 
+
                 <div class="user-email">
                     {{ email }}
                 </div>
 
             </div>
+
 
             <a
                 href="/logout"
@@ -105,7 +126,17 @@
     </aside>
 
 
+
+    <!-- =========================================
+    MAIN CHAT
+    ========================================= -->
+
     <main class="main-chat">
+
+
+        <!-- =========================================
+        CHAT HEADER
+        ========================================= -->
 
         <header class="chat-header">
 
@@ -115,6 +146,7 @@
                     NAD AI
                 </h1>
 
+
                 <p>
                     Your intelligent AI assistant
                 </p>
@@ -123,6 +155,11 @@
 
         </header>
 
+
+
+        <!-- =========================================
+        CHAT BOX
+        ========================================= -->
 
         <div
             class="chat-box"
@@ -135,9 +172,11 @@
                     ✦
                 </div>
 
+
                 <h2>
                     How can I help you today?
                 </h2>
+
 
                 <p>
                     Ask anything. NAD AI is ready to help.
@@ -148,12 +187,22 @@
         </div>
 
 
+
+        <!-- =========================================
+        INPUT AREA
+        ========================================= -->
+
         <div class="input-area">
+
 
             <form
                 class="input-form"
+                id="chat-form"
                 onsubmit="sendMessage(event)"
             >
+
+
+                <!-- ATTACHMENT BUTTON -->
 
                 <button
                     type="button"
@@ -164,43 +213,67 @@
                     ＋
                 </button>
 
+
+
+                <!-- MESSAGE INPUT -->
+
                 <textarea
                     id="user-input"
                     placeholder="Message NAD AI..."
                     rows="1"
                     required
                 ></textarea>
+
+
+
+                <!-- VOICE BUTTON -->
+
                 <button
                     type="button"
                     class="voice-btn"
                     id="voice-button"
                     title="Voice Input"
                 >
-                <svg
-                    class="voice-icon"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                >
-                    <path
-                        d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"
-                    />
-                    <path
-                        d="M5 11a7 7 0 0 0 14 0"
-                    />
-                    <path
-                        d="M12 18v3"
-                    />
-                    <path
-                        d="M8 21h8"
-                    />
+
+                    <svg
+                        class="voice-icon"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+
+                        <path
+                            d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3Z"
+                        />
+
+                        <path
+                            d="M5 11a7 7 0 0 0 14 0"
+                        />
+
+                        <path
+                            d="M12 18v3"
+                        />
+
+                        <path
+                            d="M8 21h8"
+                        />
+
                     </svg>
+
                 </button>
+
+
+
+                <!-- SEND BUTTON -->
+
                 <button
                     type="submit"
                     class="send-btn"
+                    title="Send message"
                 >
-    ↑
+                    ↑
                 </button>
+
+
             </form>
 
 
@@ -208,23 +281,34 @@
                 NAD AI can make mistakes. Check important information.
             </p>
 
+
         </div>
 
+
     </main>
+
 
 </div>
 
 
-<script>
 
-    let currentConversationId = null;
+<!-- =========================================
+IMPORTANT:
+DO NOT DEFINE currentConversationId HERE.
 
-</script>
+It is already defined inside script.js.
+========================================= -->
 
+
+
+<!-- =========================================
+MAIN JAVASCRIPT
+========================================= -->
 
 <script
     src="{{ url_for('static', filename='script.js') }}"
 ></script>
+
 
 </body>
 
