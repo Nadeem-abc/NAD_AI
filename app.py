@@ -635,6 +635,28 @@ def ask_gemini():
             "User: "
             + user_message[:2000]
         )
+# ======================================
+# CHECK IMAGE REQUEST
+# ======================================
+
+if is_image_request(user_message):
+
+    image_data = generate_image(user_message)
+
+    if image_data:
+
+        return jsonify({
+            "reply": "Here is your generated image! 🖼️",
+            "image": "data:image/png;base64," + image_data,
+            "conversation_id": conversation_id
+        })
+
+    else:
+
+        return jsonify({
+            "reply": "Sorry, I couldn't generate the image right now.",
+            "conversation_id": conversation_id
+        })        
 
     # ======================================
     # TAVILY WEB SEARCH
@@ -694,7 +716,55 @@ def ask_gemini():
             )
 
             search_context = ""
+# ======================================
+# IMAGE REQUEST DETECTION
+# ======================================
 
+def is_image_request(message):
+
+    message = message.lower()
+
+    image_words = [
+        "create image",
+        "generate image",
+        "make image",
+        "create a picture",
+        "generate a picture",
+        "make a picture",
+        "draw an image",
+        "draw a picture",
+        "image of",
+        "picture of",
+        "photo of"
+    ]
+
+    return any(word in message for word in image_words)            
+# ======================================
+# IMAGE GENERATION
+# ======================================
+
+def generate_image(prompt):
+
+    try:
+        interaction = gemini_client.interactions.create(
+            model="gemini-3.1-flash-image",
+            input=prompt,
+            response_format={
+                "type": "image",
+                "mime_type": "image/png",
+                "aspect_ratio": "1:1",
+                "image_size": "1K"
+            }
+        )
+
+        if interaction.output_image:
+            return interaction.output_image.data
+
+        return None
+
+    except Exception as e:
+        print("IMAGE GENERATION ERROR:", e)
+        return None
 
     # ======================================
     # GET RESPONSE FROM GEMINI
