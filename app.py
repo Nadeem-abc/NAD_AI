@@ -175,7 +175,7 @@ def generate_image(prompt):
     try:
 
         interaction = gemini_client.interactions.create(
-            model="gemini-3.6-flash-image",
+            model="gemini-3.5-flash-image",
             input=prompt,
             response_format={
                 "type": "image",
