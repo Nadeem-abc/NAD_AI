@@ -706,6 +706,348 @@ def ask_gemini():
                 )
 
         except Exception as e:
+            print(
+                "TAVILY ERROR:",
+                e
+            )
+            search_context = ""
+# ======================================
+# IMAGE REQUEST DETECTION
+# ======================================
+
+def is_image_request(message):
+
+    message = message.lower()
+
+    image_words = [
+        "create image",
+        "generate image",
+        "make image",
+        "create a picture",
+        "generate a picture",
+        "make a picture",
+        "draw an image",
+        "draw a picture",
+        "image of",
+        "picture of",
+        "photo of"
+    ]
+
+    return any(
+        word in message
+        for word in image_words
+    )
+
+
+# ======================================
+# IMAGE GENERATION
+# ======================================
+
+def generate_image(prompt):
+
+    try:
+
+        interaction = gemini_client.interactions.create(
+            model="gemini-3.6-flash-image",
+            input=prompt,
+            response_format={
+                "type": "image",
+                "mime_type": "image/png",
+                "aspect_ratio": "1:1",
+                "image_size": "1K"
+            }
+        )
+
+        if interaction.output_image:
+
+            return interaction.output_image.data
+
+        return None
+
+    except Exception as e:
+
+        print(
+            "IMAGE GENERATION ERROR:",
+            e
+        )
+
+        return None
+
+
+# ======================================
+# CHAT API
+# ======================================
+
+@app.route("/api/chat", methods=["POST"])
+def ask_gemini():
+
+    # ======================================
+    # CHECK LOGIN
+    # ======================================
+
+    if "user_id" not in session:
+
+        return jsonify(
+            {
+                "error": "Unauthorized"
+            }
+        ), 401
+
+
+    # ======================================
+    # GET DATA
+    # ======================================
+
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    user_message = data.get(
+        "message",
+        ""
+    ).strip()
+
+    conversation_id = data.get(
+        "conversation_id",
+        ""
+    )
+
+
+    # ======================================
+    # CHECK EMPTY MESSAGE
+    # ======================================
+
+    if not user_message:
+
+        return jsonify(
+            {
+                "error": "Message cannot be empty"
+            }
+        ), 400
+
+
+    # ======================================
+    # CREATE OR CHECK CONVERSATION
+    # ======================================
+
+    if not conversation_id:
+
+        try:
+
+            conversation = {
+                "user_id": session["user_id"],
+                "email": session["email"],
+                "title": user_message[:40],
+                "created_at": datetime.now(),
+                "updated_at": datetime.now()
+            }
+
+            result = conversations_collection.insert_one(
+                conversation
+            )
+
+            conversation_id = str(
+                result.inserted_id
+            )
+
+        except Exception as e:
+
+            print(
+                "CONVERSATION CREATE ERROR:",
+                e
+            )
+
+            return jsonify(
+                {
+                    "error": "Unable to create conversation"
+                }
+            ), 500
+
+    else:
+
+        try:
+
+            conversation = conversations_collection.find_one(
+                {
+                    "_id": ObjectId(
+                        conversation_id
+                    ),
+                    "user_id": session["user_id"]
+                }
+            )
+
+            if not conversation:
+
+                return jsonify(
+                    {
+                        "error": "Conversation not found"
+                    }
+                ), 404
+
+        except Exception as e:
+
+            print(
+                "INVALID CONVERSATION ERROR:",
+                e
+            )
+
+            return jsonify(
+                {
+                    "error": "Invalid conversation ID"
+                }
+            ), 400
+
+
+    # ======================================
+    # GET PREVIOUS MESSAGES FOR AI MEMORY
+    # ======================================
+
+    try:
+
+        previous_messages = list(
+            messages_collection.find(
+                {
+                    "conversation_id": conversation_id,
+                    "user_id": session["user_id"]
+                }
+            ).sort(
+                "created_at",
+                1
+            )
+        )
+
+        previous_messages = previous_messages[-10:]
+
+        conversation_text = ""
+
+        for message in previous_messages:
+
+            content = message.get(
+                "content",
+                ""
+            )[:1000]
+
+            if message["role"] == "user":
+
+                conversation_text += (
+                    "User: "
+                    + content
+                    + "\n"
+                )
+
+            else:
+
+                conversation_text += (
+                    "NAD AI: "
+                    + content
+                    + "\n"
+                )
+
+        conversation_text += (
+            "User: "
+            + user_message[:2000]
+        )
+
+    except Exception as e:
+
+        print(
+            "MEMORY LOAD ERROR:",
+            e
+        )
+
+        conversation_text = (
+            "User: "
+            + user_message[:2000]
+        )
+
+
+    # ======================================
+    # CHECK IMAGE REQUEST
+    # ======================================
+
+    if is_image_request(user_message):
+
+        image_data = generate_image(
+            user_message
+        )
+
+        if image_data:
+
+            return jsonify(
+                {
+                    "reply": "Here is your generated image! 🖼️",
+                    "image": (
+                        "data:image/png;base64,"
+                        + image_data
+                    ),
+                    "conversation_id": conversation_id
+                }
+            )
+
+        else:
+
+            return jsonify(
+                {
+                    "reply": (
+                        "Sorry, I couldn't generate "
+                        "the image right now."
+                    ),
+                    "conversation_id": conversation_id
+                }
+            )
+
+
+    # ======================================
+    # TAVILY WEB SEARCH
+    # ======================================
+
+    search_context = ""
+
+    if needs_web_search(user_message):
+
+        try:
+
+            search_response = tavily_client.search(
+                query=user_message + " latest current 2026",
+                search_depth="advanced",
+                max_results=5
+            )
+
+            results = search_response.get(
+                "results",
+                []
+            )
+
+            for result in results:
+
+                title = result.get(
+                    "title",
+                    ""
+                )
+
+                content = result.get(
+                    "content",
+                    ""
+                )[:2000]
+
+                url = result.get(
+                    "url",
+                    ""
+                )
+
+                search_context += (
+                    "TITLE: "
+                    + title
+                    + "\n"
+                    + "URL: "
+                    + url
+                    + "\n"
+                    + "CONTENT: "
+                    + content
+                    + "\n\n"
+                )
+
+        except Exception as e:
 
             print(
                 "TAVILY ERROR:",
@@ -713,50 +1055,7 @@ def ask_gemini():
             )
 
             search_context = ""
-# ======================================
-# IMAGE REQUEST DETECTION
-# ======================================
 
-    def is_image_request(message):
-
-        message = message.lower()
-        image_words = [
-            "create image",
-            "generate image",
-            "make image",
-            "create a picture",
-            "generate a picture",
-            "make a picture",
-            "draw an image",
-            "draw a picture",
-            "image of",
-            "picture of",
-            "photo of"
-        ]
-        return any(word in message for word in image_words)            
-# ======================================
-# IMAGE GENERATION
-# ======================================
-
-    def generate_image(prompt):
-
-        try:
-            interaction = gemini_client.interactions.create(
-                model="gemini-3.6-flash-image",
-                input=prompt,
-                response_format={
-                    "type": "image",
-                    "mime_type": "image/png",
-                    "aspect_ratio": "1:1",
-                    "image_size": "1K"
-                }
-            )
-            if interaction.output_image:
-                return interaction.output_image.data
-                return None
-        except Exception as e:
-            print("IMAGE GENERATION ERROR:", e)
-            return None
 
     # ======================================
     # GET RESPONSE FROM GEMINI
@@ -764,22 +1063,28 @@ def ask_gemini():
 
     try:
 
+        identity_rules = (
+            "IDENTITY RULES:\n"
+            "- If the user asks your name, who you are, or what you are, "
+            "say that your name is NAD AI.\n"
+            "- If the user asks who created you, who made you, "
+            "who developed you, or who built you, "
+            "say: \"I was created by F. Mohamed Indhiyas.\"\n"
+            "- Do not invent another creator name.\n"
+            "- Keep the answer friendly and concise.\n\n"
+        )
+
+
         if needs_web_search(user_message):
 
             if search_context:
 
                 prompt = (
                     "You are NAD AI, a helpful and friendly AI assistant.\n\n"
-                    "IDENTITY RULES:\n"
-                    "- If the user asks your name, who you are, or what you are, "
-                    "say that your name is NAD AI.\n"
-                    "- If the user asks who created you, who made you, "
-                    "who developed you, or who built you, "
-                    "say: \"I was created by F. Mohamed Indhiyas.\"\n"
-                    "- Do not invent another creator name.\n"
-                    "- Keep the answer friendly and concise.\n\n"
 
-                    "IMPORTANT CURRENT INFORMATION RULE:\n"
+                    + identity_rules
+
+                    + "IMPORTANT CURRENT INFORMATION RULE:\n"
                     "This question may require current or recent information.\n"
                     "You MUST use the WEB SEARCH RESULTS as the primary source.\n"
                     "Do NOT use old model memory when answering current facts.\n"
@@ -808,7 +1113,9 @@ def ask_gemini():
                 prompt = (
                     "You are NAD AI, a helpful and friendly AI assistant.\n\n"
 
-                    "IMPORTANT:\n"
+                    + identity_rules
+
+                    + "IMPORTANT:\n"
                     "The user asked for current or recent information, "
                     "but the web search did not return usable results.\n"
                     "DO NOT use old model memory to guess the current answer.\n"
@@ -827,9 +1134,10 @@ def ask_gemini():
             prompt = (
                 "You are NAD AI, a helpful and friendly AI assistant.\n\n"
 
-                "Continue the conversation naturally.\n"
-                "Answer clearly and accurately.\n"
+                + identity_rules
 
+                + "Continue the conversation naturally.\n"
+                "Answer clearly and accurately.\n"
                 "If the user asks in Tamil or Tanglish, respond in "
                 "simple Tamil or Tanglish.\n\n"
 
@@ -873,10 +1181,6 @@ def ask_gemini():
     # SAVE MESSAGES TO DATABASE
     # ======================================
 
-    # ======================================
-    # SAVE MESSAGES TO DATABASE
-    # ======================================
-
     try:
 
         messages_collection.insert_one(
@@ -912,7 +1216,9 @@ def ask_gemini():
 
             conversations_collection.update_one(
                 {
-                    "_id": ObjectId(conversation_id),
+                    "_id": ObjectId(
+                        conversation_id
+                    ),
                     "user_id": session["user_id"]
                 },
                 {
@@ -927,7 +1233,9 @@ def ask_gemini():
 
             conversations_collection.update_one(
                 {
-                    "_id": ObjectId(conversation_id),
+                    "_id": ObjectId(
+                        conversation_id
+                    ),
                     "user_id": session["user_id"]
                 },
                 {
@@ -980,4 +1288,7 @@ def logout():
 # ==========================================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+
+    app.run(
+        debug=True
+    )
