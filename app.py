@@ -8,6 +8,7 @@ import certifi
 from datetime import datetime
 import os
 import base64
+import time
 
 
 # ==========================================
@@ -817,97 +818,47 @@ def ask_gemini():
     # ======================================
     # GET RESPONSE FROM GEMINI
     # ======================================
-
-    try:
-
-        identity_rules = (
-            "IDENTITY RULES:\n"
-            "- If the user asks your name, who you are, or what you are, "
-            "say that your name is NAD AI.\n"
-            "- If the user asks who created you, who made you, "
-            "who developed you, or who built you, "
-            "say: \"I was created by F. Mohamed Indhiyas.\"\n"
-            "- Do not invent another creator name.\n"
-            "- Keep the answer friendly and concise.\n\n"
-        )
-
-
-        if search_context:
-
-            prompt = (
-                "You are NAD AI, a helpful and friendly AI assistant.\n\n"
-
-                + identity_rules
-
-                + "IMPORTANT WEB SEARCH RULE:\n"
-                "The user asked a question that may require current "
-                "or recent information.\n"
-                "Web search results are provided below.\n"
-                "Use the web search results as the primary source for "
-                "current facts.\n"
-                "Do not answer a current-fact question using old memory "
-                "when the web results provide a newer answer.\n"
-                "Prefer the newest reliable information.\n"
-                "If the results are unclear or conflicting, explain that "
-                "clearly instead of guessing.\n\n"
-
-                "If the user asks in Tamil or Tanglish, respond in "
-                "simple Tamil or Tanglish.\n\n"
-
-                "WEB SEARCH RESULTS:\n"
-                + search_context
-                + "\n"
-
-                "CONVERSATION:\n"
-                + conversation_text
+    response = None
+    for attempt in range(3):
+        
+        try:
+            print(
+                "GEMINI ATTEMPT:",
+                attempt + 1
             )
-
-        else:
-
-            prompt = (
-                "You are NAD AI, a helpful and friendly AI assistant.\n\n"
-
-                + identity_rules
-
-                + "Continue the conversation naturally.\n"
-                "Answer clearly and accurately.\n"
-                "If the user asks in Tamil or Tanglish, respond in "
-                "simple Tamil or Tanglish.\n\n"
-
-                "CONVERSATION:\n"
-                + conversation_text
+            response = gemini_client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt
             )
-
-
-        response = gemini_client.models.generate_content(
-            model="gemini-3.5-flash",
-            contents=prompt
-        )
-
-        bot_reply = response.text
-
-        if not bot_reply:
-
-            bot_reply = (
-                "Sorry, NAD AI could not generate a response."
+            if response and response.text:
+                bot_reply = response.text
+                print(
+                    "GEMINI RESPONSE SUCCESS"
+                )
+                break
+        except Exception as e:
+            print(
+                "GEMINI ATTEMPT ERROR:",
+                e
             )
-
-    except Exception as e:
-
-        print(
-            "GEMINI ERROR:",
-            e
-        )
-
-        return jsonify(
-            {
-                "reply": (
-                    "Sorry, NAD AI is not responding right now. "
-                    "Please try again."
-                ),
-                "conversation_id": conversation_id
-            }
-        ), 500
+            if attempt < 2:
+                wait_time = 2 ** attempt
+                print(
+                    "RETRYING GEMINI AFTER",
+                    wait_time,
+                    "SECONDS"
+                )
+                time.sleep(
+                    wait_time
+                )
+            else:
+                print(
+                    "GEMINI FAILED AFTER 3 ATTEMPTS"
+                )
+                bot_reply = (
+                    "Sorry, Gemini is temporarily busy. "
+                    "Please try again in a moment."
+                )
 
 
     # ======================================
