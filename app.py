@@ -816,45 +816,105 @@ def ask_gemini():
 
 
     # ======================================
+    # BUILD PROMPT
+    # ======================================
+
+    if search_context:
+
+        prompt = (
+            "You are NAD AI, a helpful and friendly AI assistant.\n\n"
+            "CURRENT INFORMATION RULE:\n"
+            "Use the provided web search results as the primary source for current or recent information.\n"
+            "Do not rely on old memory when the web results provide newer information.\n"
+            "If the web results are unclear or conflicting, say that the information could not be verified clearly.\n\n"
+            "IDENTITY RULES:\n"
+            "If the user asks your name, say that your name is NAD AI.\n"
+            "If the user asks who created you, who made you, who developed you, or who built you, say:\n"
+            "I was created by F. Mohamed Indhiyas.\n"
+            "Do not invent another creator name.\n\n"
+            "LANGUAGE RULE:\n"
+            "If the user asks in Tamil or Tanglish, respond in simple Tamil or Tanglish.\n\n"
+            "WEB SEARCH RESULTS:\n"
+            + search_context
+            + "\n\n"
+            "CONVERSATION:\n"
+            + conversation_text
+        )
+
+    else:
+
+        prompt = (
+            "You are NAD AI, a helpful and friendly AI assistant.\n\n"
+            "Answer the user's question clearly, accurately, and naturally.\n\n"
+            "IDENTITY RULES:\n"
+            "If the user asks your name, say that your name is NAD AI.\n"
+            "If the user asks who created you, who made you, who developed you, or who built you, say:\n"
+            "I was created by F. Mohamed Indhiyas.\n"
+            "Do not invent another creator name.\n\n"
+            "LANGUAGE RULE:\n"
+            "If the user asks in Tamil or Tanglish, respond in simple Tamil or Tanglish.\n\n"
+            "CONVERSATION:\n"
+            + conversation_text
+        )
+
+
+    # ======================================
     # GET RESPONSE FROM GEMINI
     # ======================================
+
     response = None
+
     for attempt in range(3):
-        
+
         try:
+
             print(
                 "GEMINI ATTEMPT:",
                 attempt + 1
             )
+
             response = gemini_client.models.generate_content(
                 model="gemini-3.6-flash",
                 contents=prompt
             )
+
             if response and response.text:
+
                 bot_reply = response.text
+
                 print(
                     "GEMINI RESPONSE SUCCESS"
                 )
+
                 break
+
         except Exception as e:
+
             print(
                 "GEMINI ATTEMPT ERROR:",
                 e
             )
+
             if attempt < 2:
+
                 wait_time = 2 ** attempt
+
                 print(
                     "RETRYING GEMINI AFTER",
                     wait_time,
                     "SECONDS"
                 )
+
                 time.sleep(
                     wait_time
                 )
+
             else:
+
                 print(
                     "GEMINI FAILED AFTER 3 ATTEMPTS"
                 )
+
                 bot_reply = (
                     "Sorry, Gemini is temporarily busy. "
                     "Please try again in a moment."
